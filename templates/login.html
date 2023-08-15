@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema Web</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap.min.css') }}">
+    <script src="{{ url_for('static', filename='lib/jquery-3.6.1.min.js') }}"></script>
+</head>
+<body>
+<section class="vh-100" style="background-color: #9BC1BC;">
+    <div class="container py-5 h-100">
+        <div class="row d-flex justify-content-center align-items-center h-100">
+            <div class="col col-xl-10">
+                <div class="card" style="border-radius: 1rem;">
+                    <div class="row g-0">
+                        <div class="col-md-6 col-lg-5 d-none d-md-block">
+                            <img src="{{ url_for('static', filename='img/restaurante-img.png') }}"
+                                 alt="login form" class="img-fluid" style="border-radius: 1rem 0 0 1rem;"/>
+                        </div>
+                        <div class="col-md-6 col-lg-7 d-flex align-items-center">
+                            <div class="card-body p-4 p-lg-5 text-black">
+
+                                <form method="post">
+
+                                    <h5 class="fw-normal mb-3 pb-3" style="letter-spacing: 1px;">Iniciar sesión en su cuenta</h5>
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert"
+                                         id="alerta" style="display: {% if alerta %}block{% else %}none{% endif %};">
+                                        <strong id="alerta">{{ alerta }}</strong>
+                                    </div>
+
+                                    <div class="form-outline mb-4">
+                                        <input type="text" name="usuario" class="form-control form-control-lg"
+                                               maxlength="20" required/>
+                                        <label class="form-label" for="usuario">Usuario</label>
+                                    </div>
+
+                                    <div class="form-outline mb-4">
+                                        <input type="password" name="pass" class="form-control form-control-lg"
+                                               maxlength="20" required/>
+                                        <label class="form-label" for="pass">Contraseña</label>
+                                    </div>
+
+                                    <div class="pt-1 mb-4">
+                                        <button class="btn btn-dark btn-lg btn-block" type="submit">Iniciar sesión</button>
+                                    </div>
+
+                                    <a href="#!" class="small text-muted">Sistema Web Comida rápida.</a>
+                                    <a href="#!" class="small text-muted">Rodrigo Garcete.</a>
+                                </form>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="{{ url_for('static', filename='lib/bootstrap.min.js') }}"></script>
+</body>
+</html>
