@@ -293,7 +293,31 @@ def guardarMenu():
     else:
         return "ha habido un error"
 
+@app.route('/ordenes', methods=['GET'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def ordenes():
+    sql = "SELECT * FROM categoria WHERE estado = 1 ORDER BY nombre ASC"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql)
+        categorias = cursor.fetchall()
 
+    fecha_actual = datetime.now().strftime('%Y-%m-%d')
+    sql_facturacion = "SELECT * FROM facturacion WHERE fecha = %s ORDER BY hora DESC"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql_facturacion, (fecha_actual,))
+        factura_data = cursor.fetchall()
+
+    return render_template('admin/ordenes.html', categorias=categorias, factura_data=factura_data)
+
+@app.route('/usuarios', methods=['GET'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def usuarios():
+    with conexion.cursor() as cursor:
+        query = "SELECT * FROM usuario"
+        cursor.execute(query)
+        usuarios = cursor.fetchall()
+
+    return render_template('admin/usuarios.html', usuarios=usuarios)
 
 @app.route('/menu')
 @role_required(1)  # Requiere rol 1 (administrador)
@@ -316,6 +340,64 @@ def empleado():
 @app.route('/cocinero')
 def cocinero():
     return "Página de cocinero"
+
+@app.route('/datos_usuario', methods=['POST'])
+def datos_usuario():
+    idusuario = request.form.get('idusuario')
+    
+    # Realiza la consulta a la base de datos para obtener los datos del usuario
+    sql = f"SELECT * FROM usuario WHERE idusuario = {idusuario}"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql)
+        usuario = cursor.fetchone()
+    
+    if usuario:
+        # Formatea los datos del usuario en un diccionario
+        datos_usuario = {
+            'idusu': usuario['idusuario'],
+            'nombre': usuario['nombre'],
+            'apellido': usuario['apellido'],
+            'usuario': usuario['usuario'],
+            'rol': usuario['rol'],
+            'estado': usuario['estado']
+        }
+        return json.dumps(datos_usuario), 200
+    else:
+        return json.dumps({'error': 'Usuario no encontrado'}), 404
+
+@app.route('/modificar_usuario', methods=['POST'])
+def modificar_usuario():
+    idusuario = request.form.get('id')
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    usuario = request.form.get('usuario')
+    rol = request.form.get('rol')
+    estado = request.form.get('estado')
+    
+    password = request.form.get('pass')
+    if password:
+        # Generar un hash seguro de la contraseña
+        password_hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        consulta = "UPDATE usuario SET nombre = %s, apellido = %s, usuario = %s, rol = %s, estado = %s, pass = %s WHERE idusuario = %s"
+        parametros = (nombre, apellido, usuario, rol, estado, password_hashed, idusuario)
+    else:
+        consulta = "UPDATE usuario SET nombre = %s, apellido = %s, usuario = %s, rol = %s, estado = %s WHERE idusuario = %s"
+        parametros = (nombre, apellido, usuario, rol, estado, idusuario)
+        
+    with conexion.cursor() as cursor:
+        cursor.execute(consulta, parametros)
+        conexion.commit()
+    
+    if cursor.rowcount > 0:
+        return "1"
+    else:
+        return "0"
+
+
+
+
+
+
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
