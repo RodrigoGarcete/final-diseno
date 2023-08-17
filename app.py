@@ -57,7 +57,13 @@ def login():
                 session['estado'] = row['estado']
                 session['nombre'] = row['nombre']
                 session['apellido'] = row['apellido']
-                return redirect(url_for('admin'))
+                if row['rol'] == 1:
+                    return redirect(url_for('admin'))
+                elif row['rol'] == 2:
+                    return redirect(url_for('empleado'))
+                elif row['rol'] == 3:
+                    return redirect(url_for('cocinero'))
+
 
     return render_template('login.html', alerta="Usuario o contraseña incorrectos.")
 
