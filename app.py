@@ -138,7 +138,6 @@ def guardar_categoria():
 
 
 
-
 @app.route('/admin', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def admin():
@@ -207,59 +206,6 @@ def admin():
 
     return "Acceso no autorizado"
 
-@app.route('/empleado')
-@role_required(2)  # Requiere rol 2 (empleado)
-def index_empleado():
-    with conexion.cursor() as cursor:
-
-                # Consulta total categorias
-                sql_total_categorias = "SELECT COUNT(*) AS total FROM categoria"
-                cursor.execute(sql_total_categorias)
-                row_total_categorias = cursor.fetchone()
-
-                # Consulta total menús
-                sql_total_menus = "SELECT COUNT(*) AS total FROM menu"
-                cursor.execute(sql_total_menus)
-                row_total_menus = cursor.fetchone()
-
-                # Consulta total órdenes en cola
-                sql_total_ordenes = "SELECT COUNT(*) AS total FROM facturacion WHERE estado = '0'"
-                cursor.execute(sql_total_ordenes)
-                row_total_ordenes = cursor.fetchone()
-
-                # Consulta menús más vendidos hoy
-                sql_top_menus = """
-                    SELECT m.nombre, SUM(df.cantidad) AS total_vendidas
-                    FROM facturacion f
-                    INNER JOIN detalle_facturacion df ON df.idfacturacion = f.idfacturacion
-                    INNER JOIN menu m ON m.idmenu = df.idmenu
-                    WHERE f.fecha = CURDATE()
-                    GROUP BY df.idmenu, f.fecha
-                    ORDER BY total_vendidas DESC
-                    LIMIT 4;
-                """
-                cursor.execute(sql_top_menus)
-                top_menus = cursor.fetchall()
-
-                # Consulta ventas por meses
-                sql_ventas_meses = """
-                    SELECT MONTH(fecha) AS mes, SUM(total) AS total
-                    FROM facturacion
-                    GROUP BY MONTH(fecha)
-                    ORDER BY MONTH(fecha) DESC
-                    LIMIT 5;
-                """
-                cursor.execute(sql_ventas_meses)
-                ventas_meses = cursor.fetchall()
-
-    return render_template(
-        'empleado/index.html',
-        total_categorias=row_total_categorias['total'],
-        total_menus=row_total_menus['total'],
-        total_ordenes=row_total_ordenes['total'],
-        top_menus=top_menus,
-        ventas_meses=ventas_meses
-    )
 
 @app.route('/datos_menu', methods=['POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
@@ -387,7 +333,6 @@ def menu_admin():
         menus = cursor.fetchall()
     return render_template('admin/menu.html', categorias=categorias, menu_rows=menus)
 
-<<<<<<< HEAD
 @app.route('/empleado')
 @role_required(2)  # Requiere rol 2 (empleado)
 def empleado():
@@ -417,10 +362,93 @@ def empleado():
             )
 
     return "Acceso no autorizado"
-def empleado():
-    return "Página de empleado"
-=======
->>>>>>> d8145cec18430b5a26f922eff33adabbd414b2c4
+
+@app.route('/filtrar_menus', methods=['POST'])
+@role_required(2)  # Requiere rol 2 (empleado)
+def filtrar_menus():
+    categoria = request.form.get('categoria')
+    buscar = request.form.get('buscar')
+    #si categoria es distinto a 0
+    if categoria != '0':
+        sql = """SELECT menu.idmenu,menu.descripcion,menu.imagen,menu.nombre as menu,menu.precio,categoria.nombre as categoria, menu.estado as estado_menu, categoria.estado as estado_categoria
+        FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria WHERE menu.nombre LIKE '%{buscar}%' AND menu.estado = 1 AND categoria.estado = 1 and menu.idcategoria = {categoria}"""
+    else:
+        sql = """SELECT menu.idmenu,menu.descripcion,menu.imagen,menu.nombre as menu,menu.precio,categoria.nombre as categoria, menu.estado as estado_menu, categoria.estado as estado_categoria
+        FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria WHERE menu.nombre LIKE '%{buscar}%' AND menu.estado = 1 
+        AND categoria.estado = 1"""
+    with conexion.cursor() as cursor:
+        cursor.execute(sql.format(buscar=buscar, categoria=categoria))
+        menus = cursor.fetchall()
+    
+    if menus:
+        html_result = ""
+        for row in menus:
+            imagen = row['imagen']
+            idmenu = row['idmenu']
+            nombre = row['menu']
+            descripcion = row['descripcion']
+            #precio con numberformat python
+            precio = row['precio']
+            html_result += f"""<div class="col my-2">
+                        <div class="card shadow p-1 bg-body rounded">
+                        <img src="static/img/menus/{imagen}" alt="imagen" width="100%" height="150">
+                        <div class="card-body p-2">
+                        <p class="card-title my-1" id="nombre-menu-{idmenu}">{nombre}</p>
+                        <p class="card-text"><b>Precio: </b><span id="precio-menu-{idmenu}">{precio}</span> Gs</p>
+                        <p class="card-text lh-sm text-truncate">'{descripcion}"{descripcion}</p>
+                        <a data-bs-toggle="tooltip" data-bs-title="{descripcion}"><i class="bi bi-info-circle"></i></a>
+                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="btn-group mx-auto">
+                        <button type="button" class="boton-pedido" onclick="agregarProducto({idmenu})">Agregar</button>
+                        </div></div></div></div></div>
+                    """
+    else:
+        html_result = """<div class="col my-2">
+                        <div class="card shadow p-1 bg-body rounded">
+                            <div class="card-body p-2">
+                                <p class="card-title my-1">No se encontraron resultados</p>
+                            </div>
+                        </div>
+                    </div>"""
+    return html_result
+
+@app.route('/buscar_cliente', methods=['POST'])
+@role_required(2)  # Requiere rol 2 (empleado)
+def buscar_cliente():
+    ruc = request.form.get('ruc')
+    sql = "SELECT * FROM cliente WHERE ruc = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (ruc,))
+        cliente = cursor.fetchone()
+    
+    if cliente:
+        datos_cliente = {
+            'id': cliente['idcliente'],
+            'nombre': cliente['nombre'],
+            'apellido': cliente['apellido']
+        }
+    else:
+        datos_cliente = {
+            'id': 0,
+            'nombre': 'No existe',
+            'apellido': ' '
+        }
+    return json.dumps(datos_cliente), 200
+
+@app.route('/pedido', methods=['GET'])
+@role_required(2)  # Requiere rol 2 (empleado)
+def pedido():
+    sql = "SELECT * FROM categoria WHERE estado = 1"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql)
+        categorias = cursor.fetchall()
+    
+    with conexion.cursor() as cursor:
+        sql = "SELECT *,menu.descripcion as menu_descripcion,menu.nombre as menu_nombre FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria WHERE menu.estado = 1 and categoria.estado = 1"
+        cursor.execute(sql)
+        menus = cursor.fetchall()
+
+    return render_template('empleado/pedido.html', categorias=categorias, menus=menus)
 
 @app.route('/cocinero')
 def cocinero():
@@ -502,6 +530,7 @@ def guardar_usuario():
         return "1"
     else:
         return "0"
+
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():

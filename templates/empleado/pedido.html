@@ -51,8 +51,8 @@
     <!-- partial:partials/_navbar.html -->
     <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-        <a class="navbar-brand brand-logo me-5" href="index.php"><img src="../../img/logo-restaurante.png" class="me-2" alt="logo"/></a>
-        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="../../img/logo-restaurante.png" alt="logo"/></a>
+        <a class="navbar-brand brand-logo me-5" href="index.php"><img src="{{ url_for('static', filename='img/logo-restaurante.png') }}" class="me-2" alt="logo"/></a>
+        <a class="navbar-brand brand-logo-mini" href="index.php"><img src="{{ url_for('static', filename='img/logo-restaurante.png') }}" alt="logo"/></a>
       </div>
       <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
         <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
@@ -64,7 +64,7 @@
          
           <li class="nav-item nav-profile dropdown">
             <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" id="profileDropdown">
-              <img src="../../img/perfil-empleado.jpg" alt="profile"/>
+              <img src="{{ url_for('static', filename='img/perfil-empleado.jpg') }}" alt="profile"/>
             </a>
             <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
               
@@ -143,38 +143,24 @@
                       <div class="container" >
 
                         <div id="contenedor-menu" class="row row-cols-1 row-cols-sm-2 row-cols-md-3" style="overflow-y: scroll; height: 702px;">
-                          <?php
-                            include_once '../../php/conexion.php';
-                            $sql = 'SELECT *,menu.descripcion as menu_descripcion,menu.nombre as menu_nombre FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria
-                                    WHERE menu.estado = 1 and categoria.estado = 1';
-                            $result = mysqli_query($conexion, $sql);
-                            while($row = mysqli_fetch_array($result)){
-                              echo '<div class="col my-2">';
-                              echo '<div class="card shadow p-1 bg-body rounded">';
-                              echo '<img src="../../img/menus/'.$row['imagen'].'" alt="imagen" width="100%" height="150">';
-                              echo '<div class="card-body p-2">';
-                              //titulo
-                              echo '<p class="card-title my-1" id="nombre-menu-'.$row['idmenu'].'">'.$row['menu_nombre'].'</p>';
-                              //number format
-                              echo '<p class="card-text"><b>Precio: </b><span id="precio-menu-'.$row['idmenu'].'">'.number_format($row['precio'], 0, ',', '.').'</span> Gs</p>';
-                              //descripcion
-                              echo '<p class="card-text lh-sm text-truncate">'.$row['menu_descripcion'].'</p>';
-                              echo '<a data-bs-toggle="tooltip" data-bs-title="'.$row['menu_descripcion'].'"><i class="bi bi-info-circle"></i></a>';
-                              
-                              
-                              //boton
-                              echo '<div class="d-flex justify-content-between align-items-center">';
-                             
-                              echo '<div class="btn-group mx-auto">';
-                              echo '<button type="button" class="boton-pedido" onclick="agregarProducto('.$row['idmenu'].')">Agregar</button>';
-                              echo '</div>';
-                              echo '</div>';
-                              echo '</div>';
-                              echo '</div>';
-                              echo '</div>';
-
-                            };
-                          ?>
+                            {% for menu in menus %}
+                            <div class="col my-2">
+                              <div class="card shadow p-1 bg-body rounded">
+                                <img src="{{ url_for('static', filename='img/menus/' ~ menu.imagen) }}" alt="imagen" width="100%" height="150">
+                                <div class="card-body p-2">
+                                  <p class="card-title my-1" id="nombre-menu-{{ menu.idmenu }}">{{ menu.menu_nombre }}</p>
+                                  <p class="card-text"><b>Precio: </b><span id="precio-menu-{{ menu.idmenu }}">{{ menu.precio }}</span> Gs</p>
+                                  <p class="card-text lh-sm text-truncate">{{ menu.menu_descripcion }}</p>
+                                  <a data-bs-toggle="tooltip" data-bs-title="{{ menu.menu_descripcion }}"><i class="bi bi-info-circle"></i></a>
+                                  <div class="d-flex justify-content-between align-items-center">
+                                    <div class="btn-group mx-auto">
+                                      <button type="button" class="boton-pedido" onclick="agregarProducto({{ menu.idmenu }})">Agregar</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          {% endfor %}
                           
                           
                         </div>
@@ -343,7 +329,7 @@
         var categoria = document.getElementById("categoria").value;
         var buscar = document.getElementById("txtbuscar").value;
         $.ajax({
-          url: '../../php/filtrar_menus.php',
+          url: 'filtrar_menus',
           type: 'POST',
           data: {categoria: categoria, buscar: buscar},
           success: function(respuesta){
@@ -456,7 +442,7 @@
       function buscarCliente(){
         var ruc = document.getElementById("ruc-cliente").value;
         $.ajax({
-          url: '../../php/buscar_cliente.php',
+          url: 'buscar_cliente',
           type: 'POST',
           data: {ruc: ruc},
           success: function(respuesta){
