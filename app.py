@@ -7,6 +7,7 @@ import os
 from flask import jsonify
 from functools import wraps
 import json
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
@@ -205,6 +206,108 @@ def admin():
             )
 
     return "Acceso no autorizado"
+
+@app.route('/datos_menu', methods=['POST'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def datos_menu():
+    sql = "SELECT * FROM menu WHERE idmenu = %s"
+    id = request.form.get('idmenu')
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (id,))
+        menu = cursor.fetchone()
+        
+    print(id)
+    datos = {
+        'id': menu['idmenu'],
+        'nombre': menu['nombre'],
+        'descripcion': menu['descripcion'],
+        'precio': menu['precio'],
+        'idcategoria': menu['idcategoria'],
+        'estado': menu['estado']
+    }
+    print(json.dumps(datos))
+    return json.dumps(datos)
+    
+@app.route('/modificar_menu', methods=['POST'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def modificar_menu():
+    id = request.form.get('id')
+    nombre = request.form.get('nombre')
+    descripcion = request.form.get('descripcion')
+    precio = request.form.get('precio')
+    categoria = request.form.get('categoria')
+    estado = request.form.get('estado')
+
+    if 'imagen' in request.files:
+        imagen = request.files['imagen']
+        extension = imagen.filename.rsplit('.', 1)[1].lower()
+        file = f"img-menu-{id}.{extension}"
+        url_target = os.path.join(app.root_path, 'static/img/menus', file)
+        imagen.save(url_target)
+        sql2 = f"UPDATE menu SET nombre = '{nombre}', descripcion = '{descripcion}', precio = '{precio}', imagen = '{file}', idcategoria = '{categoria}', estado = '{estado}' WHERE idmenu = {id}"
+    else:
+        sql2 = f"UPDATE menu SET nombre = '{nombre}', descripcion = '{descripcion}', precio = '{precio}', idcategoria = '{categoria}', estado = '{estado}' WHERE idmenu = {id}"
+
+    with conexion.cursor() as cursor:
+        cursor.execute(sql2)
+        conexion.commit()
+
+    # Determine if the update was successful and create the response_data accordingly
+    if cursor.rowcount > 0:
+       return "1"
+    else:
+        return "ha habido un error"
+
+@app.route('/guardarMenu', methods=['POST'])
+@role_required(1)
+def guardarMenu():
+    nombre = request.form.get('nombre')
+    descripcion = request.form.get('descripcion')
+    precio = request.form.get('precio')
+    categoria = request.form.get('categoria')
+    estado = request.form.get('estado')
+
+    if 'imagen' in request.files:
+        sql = "SELECT MAX(idmenu) AS id FROM menu"
+        with conexion.cursor() as cursor:
+            cursor.execute(sql)
+            row = cursor.fetchone()
+            id = row['id'] + 1
+        imagen = request.files['imagen']
+        extension = imagen.filename.rsplit('.', 1)[1].lower()
+        file = f"img-menu-{id}.{extension}"
+        url_target = os.path.join(app.root_path, 'static/img/menus', file)
+        imagen.save(url_target)
+        fecha = datetime.now().strftime('%Y-%m-%d')
+        sql2 = f"INSERT INTO menu (nombre, descripcion, precio, imagen, idcategoria, estado, fecha_creacion) VALUES ('{nombre}', '{descripcion}', '{precio}', '{file}', '{categoria}', '{estado}', '{fecha}')"
+    else:
+        sql2 = f"INSERT INTO menu (nombre, descripcion, precio, idcategoria, estado, fecha_creacion) VALUES ('{nombre}', '{descripcion}', '{precio}', '{categoria}', '{estado}', '{fecha}')"
+    
+    with conexion.cursor() as cursor:
+        cursor.execute(sql2)
+        conexion.commit()
+
+    # Determine if the update was successful and create the response_data accordingly
+    if cursor.rowcount > 0:
+       return "1"
+    else:
+        return "ha habido un error"
+
+
+
+@app.route('/menu')
+@role_required(1)  # Requiere rol 1 (administrador)
+def menu_admin():
+    sql = "SELECT * FROM categoria"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql)
+        categorias = cursor.fetchall()
+    
+    sql_menus = "SELECT menu.*, categoria.nombre AS categoria_nombre FROM menu INNER JOIN categoria ON menu.idcategoria = categoria.idcategoria"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql_menus)
+        menus = cursor.fetchall()
+    return render_template('admin/menu.html', categorias=categorias, menu_rows=menus)
 
 @app.route('/empleado')
 @role_required(2)  # Requiere rol 2 (empleado)
