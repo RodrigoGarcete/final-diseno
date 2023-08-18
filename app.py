@@ -207,6 +207,60 @@ def admin():
 
     return "Acceso no autorizado"
 
+@app.route('/empleado')
+@role_required(2)  # Requiere rol 2 (empleado)
+def index_empleado():
+    with conexion.cursor() as cursor:
+
+                # Consulta total categorias
+                sql_total_categorias = "SELECT COUNT(*) AS total FROM categoria"
+                cursor.execute(sql_total_categorias)
+                row_total_categorias = cursor.fetchone()
+
+                # Consulta total menús
+                sql_total_menus = "SELECT COUNT(*) AS total FROM menu"
+                cursor.execute(sql_total_menus)
+                row_total_menus = cursor.fetchone()
+
+                # Consulta total órdenes en cola
+                sql_total_ordenes = "SELECT COUNT(*) AS total FROM facturacion WHERE estado = '0'"
+                cursor.execute(sql_total_ordenes)
+                row_total_ordenes = cursor.fetchone()
+
+                # Consulta menús más vendidos hoy
+                sql_top_menus = """
+                    SELECT m.nombre, SUM(df.cantidad) AS total_vendidas
+                    FROM facturacion f
+                    INNER JOIN detalle_facturacion df ON df.idfacturacion = f.idfacturacion
+                    INNER JOIN menu m ON m.idmenu = df.idmenu
+                    WHERE f.fecha = CURDATE()
+                    GROUP BY df.idmenu, f.fecha
+                    ORDER BY total_vendidas DESC
+                    LIMIT 4;
+                """
+                cursor.execute(sql_top_menus)
+                top_menus = cursor.fetchall()
+
+                # Consulta ventas por meses
+                sql_ventas_meses = """
+                    SELECT MONTH(fecha) AS mes, SUM(total) AS total
+                    FROM facturacion
+                    GROUP BY MONTH(fecha)
+                    ORDER BY MONTH(fecha) DESC
+                    LIMIT 5;
+                """
+                cursor.execute(sql_ventas_meses)
+                ventas_meses = cursor.fetchall()
+
+    return render_template(
+        'empleado/index.html',
+        total_categorias=row_total_categorias['total'],
+        total_menus=row_total_menus['total'],
+        total_ordenes=row_total_ordenes['total'],
+        top_menus=top_menus,
+        ventas_meses=ventas_meses
+    )
+
 @app.route('/datos_menu', methods=['POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def datos_menu():
@@ -333,9 +387,6 @@ def menu_admin():
         menus = cursor.fetchall()
     return render_template('admin/menu.html', categorias=categorias, menu_rows=menus)
 
-@app.route('/empleado')
-def empleado():
-    return "Página de empleado"
 
 @app.route('/cocinero')
 def cocinero():
@@ -393,11 +444,30 @@ def modificar_usuario():
     else:
         return "0"
 
+@app.route('/guardar_usuario', methods=['POST'])
+def guardar_usuario():
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    usuario = request.form.get('usuario')
+    rol = request.form.get('rol')
+    estado = request.form.get('estado')
+    password = request.form.get('password')
+    fecha = datetime.now().strftime('%Y-%m-%d')
+    print(password)
 
-
-
-
-
+    # Generar un hash seguro de la contraseña
+    password_hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    consulta = "INSERT INTO usuario (nombre, apellido, usuario, rol, estado, pass, fecha_creacion) VALUES (%s, %s, %s, %s, %s, %s, CURDATE())"
+    parametros = (nombre, apellido, usuario, rol, estado, password_hashed)
+        
+    with conexion.cursor() as cursor:
+        cursor.execute(consulta, parametros)
+        conexion.commit()
+    
+    if cursor.rowcount > 0:
+        return "1"
+    else:
+        return "0"
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
