@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, Response
 import pymysql.cursors
 from flask_session import Session
 from conexion import conexion
@@ -8,6 +8,11 @@ from flask import jsonify
 from functools import wraps
 import json
 from datetime import datetime
+import pytz
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
@@ -435,6 +440,67 @@ def buscar_cliente():
         }
     return json.dumps(datos_cliente), 200
 
+@app.route('/facturar', methods=['POST'])
+@role_required(2)  # Requiere rol 2 (empleado)
+def facturar():
+    
+    data = request.json
+    idcliente = data.get("idcliente")
+    total = data.get("total")
+    efectivo = data.get("efectivo")
+    vuelto = data.get("vuelto")
+    idusuario = data.get("idusuario")
+    idmenuArray = data.get("idmenu")
+    cantidadArray = data.get("cantidad")
+    precioArray = data.get("precio")
+
+    tz = pytz.timezone('America/Asuncion')
+    fecha_actual = datetime.now(tz).strftime('%Y-%m-%d')
+    hora_actual = datetime.now(tz).strftime('%H:%M:%S')
+
+    error = 0
+
+    with conexion.cursor() as cursor:
+        cursor.execute("SELECT * FROM facturacion WHERE fecha = %s ORDER BY idfacturacion DESC LIMIT 1", (fecha_actual,))
+        row = cursor.fetchone()
+        
+        if row:
+            nro_orden = row['orden'] + 1
+        else:
+            nro_orden = 1
+
+        conexion.begin()
+
+        cursor.execute("INSERT INTO facturacion (idcliente, total, fecha, hora, idusuario, estado, orden) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                       (idcliente, total, fecha_actual, hora_actual, idusuario, '0', nro_orden))
+        idfactura = cursor.lastrowid
+
+        for i in range(len(idmenuArray)):
+            precio = precioArray[i].replace(".", "")
+            cursor.execute("INSERT INTO detalle_facturacion (idfacturacion, idmenu, cantidad, precio) VALUES (%s, %s, %s, %s)",
+                           (idfactura, idmenuArray[i], cantidadArray[i], precio))
+
+        conexion.commit()
+
+        if cursor.rowcount > 0:
+            response_data = {
+                'idfactura': idfactura,
+                'nro_orden': nro_orden,
+                'efectivo': efectivo,
+                'vuelto': vuelto,
+                'error': error,
+                'fecha': fecha_actual,
+                'hora': hora_actual
+            }
+        else:
+            conexion.rollback()
+            error = 1
+            response_data = {'error': error}
+
+    return json.dumps(response_data), 200
+
+    
+
 @app.route('/pedido', methods=['GET'])
 @role_required(2)  # Requiere rol 2 (empleado)
 def pedido():
@@ -448,7 +514,8 @@ def pedido():
         cursor.execute(sql)
         menus = cursor.fetchall()
 
-    return render_template('empleado/pedido.html', categorias=categorias, menus=menus)
+    idusuario = session.get('idusuario')
+    return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario)
 
 @app.route('/cocinero')
 def cocinero():
@@ -530,6 +597,101 @@ def guardar_usuario():
         return "1"
     else:
         return "0"
+
+@app.route('/ticket', methods=['POST'])
+def generate_pdf():
+    data = request.json
+    idcliente = data.get('idcliente')
+    total = data.get('total')
+    efectivo = data.get('efectivo')
+    vuelto = data.get('vuelto')
+    idusuario = data.get('idusuario')
+    idmenu = data.get('idmenu')
+    cantidad = data.get('cantidad')
+    precios = data.get('precio')
+    fecha = data.get('fecha_actual')
+    hora = data.get('hora_actual')
+    idfactura = data.get('idfactura')
+    nombre_empleado = data.get('nombre_empleado')
+    menu = data.get('menu')
+    nro_orden = data.get('nro_orden')
+
+    # Obtener los datos del cliente
+    sql_cliente = "SELECT * FROM cliente WHERE idcliente = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql_cliente, (idcliente,))
+        cliente = cursor.fetchone()
+    print(cliente)
+    #comprobar apellido no sea none
+    if cliente['apellido'] is None:
+        nombre_cliente = cliente['nombre']
+    else:
+        nombre_cliente = cliente['nombre'] + ' ' + cliente['apellido']
+    ruc = cliente['ruc']
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    base_styles = getSampleStyleSheet()
+    
+    styles = {
+    'TitleCenter': ParagraphStyle('TitleCenter', parent=base_styles['Title'], alignment=1),
+    'NormalCenter': ParagraphStyle('NormalCenter', parent=base_styles['Normal'], alignment=1),
+    'RightAligned': ParagraphStyle('RightAligned', parent=base_styles['Normal'], alignment=2),
+    'TableCell': ParagraphStyle('TableCell', parent=base_styles['Normal'], fontSize=6)
+}
+
+    story = []
+
+    # CABECERA
+    header_style = ParagraphStyle('HeaderStyle', parent=styles['Title'], alignment=1)
+    story.append(Paragraph("Comidas RG", header_style))
+    story.append(Paragraph("COMIDAS RAPIDAS RN", styles['NormalCenter']))
+    story.append(Paragraph("de Rodrigo y Nathalia", styles['NormalCenter']))
+    story.append(Paragraph("Calle Mcal Lopez c/ Mauricio Jose Troche", styles['NormalCenter']))
+    story.append(Paragraph("Cel: 0976-415982", styles['NormalCenter']))
+    story.append(Spacer(1, 10))
+
+    num_factura = f"Nro Factura: {idfactura} - Orden: #{nro_orden}"
+    story.append(Paragraph(num_factura, styles['Normal']))
+    story.append(Paragraph(f"Fecha: {fecha}", styles['Normal']))
+    story.append(Paragraph(f"Hora: {hora}", styles['Normal']))
+    story.append(Paragraph(f"Cod.Cliente: {idcliente}", styles['Normal']))
+    story.append(Paragraph(f"Cliente: {nombre_cliente}", styles['Normal']))
+    story.append(Paragraph(f"Ruc/Ci: {ruc}", styles['Normal']))
+    story.append(Paragraph(f"Empleado: {nombre_empleado}", styles['Normal']))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Cantidad", styles['TableCell']))
+    story.append(Paragraph("Descripcion", styles['TableCell']))
+    story.append(Paragraph("Precio", styles['TableCell']))
+    story.append(Paragraph("Importe", styles['TableCell']))
+
+    # Recorrer los detalles
+    for i in range(len(cantidad)):
+        story.append(Paragraph(str(cantidad[i]), styles['TableCell']))
+        story.append(Paragraph(menu[i], styles['TableCell']))
+        story.append(Paragraph(precios[i], styles['TableCell']))
+        importe = float(precios[i]) * cantidad[i]
+        story.append(Paragraph(str(importe), styles['TableCell']))
+
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph(f"Total: {total}", styles['NormalRight']))
+    story.append(Paragraph(f"Efectivo: {efectivo}", styles['NormalRight']))
+    story.append(Paragraph(f"Vuelto: {vuelto}", styles['NormalRight']))
+
+    story.append(Spacer(1, 20))
+    story.append(Paragraph(f"Nro Orden: #{nro_orden}", styles['NormalCenter']))
+    story.append(Paragraph("Iva incluido", styles['NormalCenter']))
+    story.append(Paragraph("Gracias por su compra", styles['NormalCenter']))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    response = Response(buffer.read(), content_type='application/pdf')
+    response.headers['Content-Disposition'] = 'inline; filename=ticket.pdf'
+    return response
 
 
 @app.route('/cerrar_session', methods=['POST'])

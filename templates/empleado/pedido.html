@@ -202,7 +202,7 @@
                             <!-- icono buscar -->
                             
                             <input id="idcliente" type="hidden" name="" value="1">
-                            <input id="idusuario" type="hidden" value="<?php echo $_SESSION['idusuario'];?>">
+                            <input id="idusuario" type="hidden" value="{{ idusuario }}">
                             <input type="hidden" name="nombre-empleado" id="nombre-empleado" value="<?php echo $_SESSION['nombre'].' '.$_SESSION['apellido'];?>">
                           </div>
                         </div>
@@ -484,9 +484,21 @@
         }
         
         $.ajax({
-          url: '../../php/facturar.php',
+          url: 'facturar',
           type: 'POST',
-          data: {idcliente: idcliente, total: total, efectivo: efectivo, vuelto: vuelto, idusuario: idusuario, idmenu: idmenuArray, cantidad: cantidadArray, menu: menuArray, precio: precioArray},
+          data: JSON.stringify({
+            idcliente: idcliente,
+            total: total,
+            efectivo: efectivo,
+            vuelto: vuelto,
+            idusuario: idusuario,
+            idmenu: idmenuArray,
+            cantidad: cantidadArray,
+            menu: menuArray,
+            precio: precioArray
+        }),
+
+          contentType: 'application/json',
           
           success: function(response){
             //recibir json
@@ -503,12 +515,25 @@
               
               $.ajax({   
                 type: "POST",
-                data: {idcliente: idcliente, total: total, efectivo: efectivo, vuelto: vuelto, idusuario: idusuario, idmenu: idmenuArray,
-                   cantidad: cantidadArray, menu: menuArray, precio: precioArray, fecha_actual: fecha_actual, hora_actual: hora_actual,
-                    idfactura: idfactura, nombre_empleado: nombre_empleado, nro_orden: nro_orden},
+                data: JSON.stringify({
+                    idcliente: idcliente,
+                    total: total,
+                    efectivo: efectivo,
+                    vuelto: vuelto,
+                    idusuario: idusuario,
+                    idmenu: idmenuArray,
+                    cantidad: cantidadArray,
+                    menu: menuArray,
+                    precio: precioArray,
+                    fecha_actual: fecha_actual,
+                    hora_actual: hora_actual,
+                    idfactura: idfactura,
+                    nombre_empleado: nombre_empleado,
+                    nro_orden: nro_orden
+                }),
                 
-                url: "../../php/ticket.php",
-                
+                url: "ticket",
+                contentType: "application/json",
                 xhrFields: {
                     responseType: 'blob'
                 },
