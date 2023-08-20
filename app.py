@@ -521,8 +521,34 @@ def pedido():
     return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario, nombre=nombre, apellido=apellido)
 
 @app.route('/cocinero')
+@role_required(3)  # Requiere rol 3 (cocinero)
 def cocinero():
-    return "Página de cocinero"
+    if 'usuario' in session and 'rol' in session:
+        if session['rol'] == 3:  
+            with conexion.cursor() as cursor:
+                # Consulta total categorias
+                sql_total_categorias = "SELECT COUNT(*) AS total FROM categoria"
+                cursor.execute(sql_total_categorias)
+                row_total_categorias = cursor.fetchone()
+
+                # Consulta total menús
+                sql_total_menus = "SELECT COUNT(*) AS total FROM menu"
+                cursor.execute(sql_total_menus)
+                row_total_menus = cursor.fetchone()
+
+                # Consulta total órdenes en cola
+                sql_total_ordenes = "SELECT COUNT(*) AS total FROM facturacion WHERE estado = '0'"
+                cursor.execute(sql_total_ordenes)
+                row_total_ordenes = cursor.fetchone()
+
+            return render_template(
+                'cocinero/cocinero.html',
+                total_categorias=row_total_categorias['total'],
+                total_menus=row_total_menus['total'],
+                total_ordenes=row_total_ordenes['total']
+            )
+
+    return "Acceso no autorizado"
 
 @app.route('/datos_usuario', methods=['POST'])
 def datos_usuario():
