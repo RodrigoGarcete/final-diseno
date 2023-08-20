@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, Response
+from flask import Flask, render_template, request, redirect, url_for, session, Response,send_file
 import pymysql.cursors
 from flask_session import Session
 from conexion import conexion
@@ -9,10 +9,11 @@ from functools import wraps
 import json
 from datetime import datetime
 import pytz
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from io import BytesIO
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.pdfgen import canvas
+import io
+#import httresponse
+
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
@@ -515,7 +516,9 @@ def pedido():
         menus = cursor.fetchall()
 
     idusuario = session.get('idusuario')
-    return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario)
+    nombre = session.get('nombre')
+    apellido = session.get('apellido')
+    return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario, nombre=nombre, apellido=apellido)
 
 @app.route('/cocinero')
 def cocinero():
@@ -600,98 +603,113 @@ def guardar_usuario():
 
 @app.route('/ticket', methods=['POST'])
 def generate_pdf():
-    data = request.json
-    idcliente = data.get('idcliente')
-    total = data.get('total')
-    efectivo = data.get('efectivo')
-    vuelto = data.get('vuelto')
-    idusuario = data.get('idusuario')
-    idmenu = data.get('idmenu')
-    cantidad = data.get('cantidad')
-    precios = data.get('precio')
-    fecha = data.get('fecha_actual')
-    hora = data.get('hora_actual')
-    idfactura = data.get('idfactura')
-    nombre_empleado = data.get('nombre_empleado')
-    menu = data.get('menu')
-    nro_orden = data.get('nro_orden')
+    # Crear el objeto PDF
+    response = Response(content_type='application/pdf')
+    response.headers['Content-Disposition'] = 'inline; filename="reporte.pdf"'
 
-    # Obtener los datos del cliente
-    sql_cliente = "SELECT * FROM cliente WHERE idcliente = %s"
-    with conexion.cursor() as cursor:
-        cursor.execute(sql_cliente, (idcliente,))
-        cliente = cursor.fetchone()
-    print(cliente)
-    #comprobar apellido no sea none
-    if cliente['apellido'] is None:
-        nombre_cliente = cliente['nombre']
-    else:
-        nombre_cliente = cliente['nombre'] + ' ' + cliente['apellido']
-    ruc = cliente['ruc']
-
-    buffer = BytesIO()
-
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    base_styles = getSampleStyleSheet()
+    #imprimir request
+    print(request.get_json())
     
-    styles = {
-    'TitleCenter': ParagraphStyle('TitleCenter', parent=base_styles['Title'], alignment=1),
-    'NormalCenter': ParagraphStyle('NormalCenter', parent=base_styles['Normal'], alignment=1),
-    'RightAligned': ParagraphStyle('RightAligned', parent=base_styles['Normal'], alignment=2),
-    'TableCell': ParagraphStyle('TableCell', parent=base_styles['Normal'], fontSize=6)
-}
+    data = request.get_json()
 
-    story = []
+    idcliente = data['idcliente']
+    total = data['total']
+    efectivo = data['efectivo']
+    vuelto = data['vuelto']
+    idfactura = data['idfactura']
+    nombre_empleado = data['nombre_empleado']
+    cantidad = data['cantidad']
+    precios = data['precio']
+    menu = data['menu']
+    fecha_actual = data['fecha_actual']
+    hora_actual = data['hora_actual']
+    nro_orden = data['nro_orden']
+
+    sql = "SELECT * FROM cliente WHERE idcliente = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (idcliente,))
+        cliente = cursor.fetchone()
+    #si apellido es none
+    if cliente['apellido'] is None:
+        nombre_apellido = cliente['nombre']
+        ruc = cliente['ruc']
+    else:
+        nombre_apellido = cliente['nombre'] + ' ' + cliente['apellido']
+        ruc = cliente['ruc']
+
+    pdf_output = io.BytesIO()
+
+    c = canvas.Canvas(pdf_output)
+    #tamano ajustado al texto
+    c.setPageSize((300, 800))
 
     # CABECERA
-    header_style = ParagraphStyle('HeaderStyle', parent=styles['Title'], alignment=1)
-    story.append(Paragraph("Comidas RG", header_style))
-    story.append(Paragraph("COMIDAS RAPIDAS RN", styles['NormalCenter']))
-    story.append(Paragraph("de Rodrigo y Nathalia", styles['NormalCenter']))
-    story.append(Paragraph("Calle Mcal Lopez c/ Mauricio Jose Troche", styles['NormalCenter']))
-    story.append(Paragraph("Cel: 0976-415982", styles['NormalCenter']))
-    story.append(Spacer(1, 10))
+    
+    c.setFont('Helvetica', 12)
+    c.drawString(60, 700, 'Comidas RyN')
+    c.setFont('Helvetica', 8)
+    c.drawString(60, 690, 'COMIDAS RAPIDAS RyN')
+    c.setFont('Helvetica', 7)
+    c.drawString(60, 680, 'de Rodrigo y Nathalia')
+    c.setFont('Helvetica', 5)
+    c.drawString(60, 670, 'Calle Mcal Lopez c/ Mauricio Jose Troche')
+    c.drawString(60, 660, 'Cel: 0976-415982')
+    
+    c.setFont('Helvetica', 7)
+    idfactura = str(idfactura).zfill(7)
+    fecha_estil = fecha_actual.replace("-", "")
+    num = fecha_estil + idfactura
+    c.drawString(60, 640, 'Nro Factura: ' + num)
+    c.drawString(60, 630, 'Fecha: ' + fecha_actual)
+    c.drawString(60, 620, 'Hora: ' + hora_actual)
+    c.drawString(60, 610, 'Cod.Cliente: ' + idcliente)
+    c.drawString(60, 600, 'Cliente: ' + nombre_apellido)
+    c.drawString(60, 590, 'Ruc/Ci: ' + str(ruc))
+    c.drawString(60, 580, 'Empleado: ' + nombre_empleado)
 
-    num_factura = f"Nro Factura: {idfactura} - Orden: #{nro_orden}"
-    story.append(Paragraph(num_factura, styles['Normal']))
-    story.append(Paragraph(f"Fecha: {fecha}", styles['Normal']))
-    story.append(Paragraph(f"Hora: {hora}", styles['Normal']))
-    story.append(Paragraph(f"Cod.Cliente: {idcliente}", styles['Normal']))
-    story.append(Paragraph(f"Cliente: {nombre_cliente}", styles['Normal']))
-    story.append(Paragraph(f"Ruc/Ci: {ruc}", styles['Normal']))
-    story.append(Paragraph(f"Empleado: {nombre_empleado}", styles['Normal']))
-    story.append(Spacer(1, 10))
+    c.drawString(60, 560, '-------------------------------------------------------------------------------')
 
-    story.append(Paragraph("Cantidad", styles['TableCell']))
-    story.append(Paragraph("Descripcion", styles['TableCell']))
-    story.append(Paragraph("Precio", styles['TableCell']))
-    story.append(Paragraph("Importe", styles['TableCell']))
-
-    # Recorrer los detalles
+    # Cabecera tabla
+    c.setFont('Helvetica', 6)
+    c.drawString(60, 540, 'Cant.')
+    c.drawString(80, 540, 'Descripcion')
+    c.drawString(160, 540, 'Precio')
+    c.drawString(220, 540, 'Importe')
+    c.setFont('Helvetica', 7)
+    c.drawString(60, 530, '-------------------------------------------------------------------------------')
+    c.setFont('Helvetica', 6)
+    
+    # Recorrer arrays
+    y_position = 510
     for i in range(len(cantidad)):
-        story.append(Paragraph(str(cantidad[i]), styles['TableCell']))
-        story.append(Paragraph(menu[i], styles['TableCell']))
-        story.append(Paragraph(precios[i], styles['TableCell']))
-        importe = float(precios[i]) * cantidad[i]
-        story.append(Paragraph(str(importe), styles['TableCell']))
+        c.drawString(60, y_position, cantidad[i])
+        c.drawString(80, y_position, menu[i])
+        c.drawString(160, y_position, precios[i])
+        importe = str(float(precios[i].replace('.', '')) * int(cantidad[i]))
+        c.drawString(220, y_position, importe)
+        y_position -= 10
 
-    story.append(Spacer(1, 10))
+    c.setFont('Helvetica', 7)
+    c.drawString(60, y_position - 10, '-------------------------------------------------------------------------------')
 
-    story.append(Paragraph(f"Total: {total}", styles['NormalRight']))
-    story.append(Paragraph(f"Efectivo: {efectivo}", styles['NormalRight']))
-    story.append(Paragraph(f"Vuelto: {vuelto}", styles['NormalRight']))
+    # Totales
+    c.setFont('Helvetica', 7)
+    c.drawString(190, y_position - 30, 'Total: ' + total)
+    c.drawString(190, y_position - 40, 'Efectivo: ' + efectivo)
+    c.drawString(190, y_position - 50, 'Vuelto: ' + vuelto)
+    c.drawString(100, y_position - 70, 'Nro Orden: #' + str(nro_orden))
+    
+    c.setFont('Helvetica', 6)
+    c.drawString(100, y_position - 80, 'Iva incluido')
+    c.drawString(100, y_position - 90, 'Gracias por su compra')
 
-    story.append(Spacer(1, 20))
-    story.append(Paragraph(f"Nro Orden: #{nro_orden}", styles['NormalCenter']))
-    story.append(Paragraph("Iva incluido", styles['NormalCenter']))
-    story.append(Paragraph("Gracias por su compra", styles['NormalCenter']))
-
-    doc.build(story)
-    buffer.seek(0)
-
-    response = Response(buffer.read(), content_type='application/pdf')
-    response.headers['Content-Disposition'] = 'inline; filename=ticket.pdf'
-    return response
+    c.showPage()
+    c.save()
+    pdf_output.seek(0)
+    
+    # Devolver la respuesta al cliente
+    return Response(pdf_output, content_type='application/pdf',
+                        headers={'Content-Disposition': 'inline; filename=factura.pdf'})
 
 
 @app.route('/cerrar_session', methods=['POST'])
