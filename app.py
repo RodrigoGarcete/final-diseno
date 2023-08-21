@@ -315,6 +315,29 @@ def ordenes():
 
     return render_template('admin/ordenes.html', categorias=categorias, factura_data=factura_data)
 
+@app.route('/ordenes_empleado')
+@role_required(2)  # Requiere rol 2 (empleado)
+def ordenes_empleado():
+    #abrir conexion
+    conexion.ping(reconnect=True)
+    try:
+        # Realiza la consulta para obtener las órdenes y sus detalles
+        with conexion.cursor() as cursor:
+            sql = "SELECT * FROM facturacion WHERE estado = 0 ORDER BY idfacturacion asc"
+            cursor.execute(sql)
+            ordenes = cursor.fetchall()
+            for orden in ordenes:
+                sql_detalle = "SELECT df.*, m.nombre FROM detalle_facturacion df INNER JOIN menu m ON m.idmenu = df.idmenu WHERE idfacturacion = %s"
+                cursor.execute(sql_detalle, (orden['idfacturacion'],))
+                orden['detalles'] = cursor.fetchall()
+    except pymysql.Error as e:
+        print(f"Error al consultar la base de datos: {e}")
+        ordenes = []
+    #cerrar conexion
+    conexion.close()
+    
+    return render_template('empleado/ordenes.html', ordenes=ordenes)
+
 @app.route('/usuarios', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def usuarios():
