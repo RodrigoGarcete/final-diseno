@@ -89,23 +89,24 @@
       <nav class="sidebar sidebar-offcanvas" id="sidebar">
         <ul class="nav">
           <li class="nav-item">
-            <a class="nav-link" href="index.php">
+            <a class="nav-link" href="empleado">
               <i class="bi-speedometer2 menu-icon"></i>
               <span class="menu-title">Dashboard</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="pedido.php">
+            <a class="nav-link" href="pedido">
               <i class="fa-solid fa-cash-register menu-icon"></i>
               <span class="menu-title">Pedido</span>
             </a>
           </li>
           <li class="nav-item">
-              <a class="nav-link" href="ordenes.php">
-                <i class="fa-solid fa-list menu-icon"></i>
-                <span class="menu-title">Ordenes</span>
-              </a>
-            </li>
+            <a class="nav-link" href="ordenes_empleado">
+              <i class="fa-solid fa-list menu-icon"></i>
+              <span class="menu-title">Ordenes</span>
+            </a>
+          </li>
+          
           
         </ul>
       </nav>
@@ -116,7 +117,7 @@
               <div class="col-md-12 grid-margin">
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
-                    <h4 class="font-weight-bold mb-0">Sistema Web - Cocinero</h4>
+                    <h4 class="font-weight-bold mb-0">Sistema Web - Empleado</h4>
                   </div>
                  
                 </div>
@@ -220,7 +221,7 @@
 
     function cerrarSession(){
         $.ajax({
-          url: '../../php/cerrar_session.php',
+          url: 'cerrar_session',
           type: 'POST',
           success: function(respuesta){
             if(respuesta == 1){

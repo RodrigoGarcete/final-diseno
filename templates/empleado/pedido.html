@@ -92,17 +92,18 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="pedido.php">
+            <a class="nav-link" href="pedido">
               <i class="fa-solid fa-cash-register menu-icon"></i>
               <span class="menu-title">Pedido</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="ordenes.php">
+            <a class="nav-link" href="ordenes_empleado">
               <i class="fa-solid fa-list menu-icon"></i>
               <span class="menu-title">Ordenes</span>
             </a>
           </li>
+          
           
         </ul>
       </nav>
@@ -315,7 +316,7 @@
 
     function cerrarSession(){
         $.ajax({
-          url: '../../php/cerrar_session.php',
+          url: 'cerrar_session',
           type: 'POST',
           success: function(respuesta){
             if(respuesta == 1){
