@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Sistema Web - Comida Rapida</title>
+    <!-- plugins:css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/base/vendor.bundle.base.css') }}">
+    <!-- endinject -->
+    <!-- inject:css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- endinject -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.png') }}" />
+    <script src="https://kit.fontawesome.com/abee66e5f4.js" crossorigin="anonymous"></script>
+    <style>
+        .boton-pedido {
+            background-color: #248afd;
+            color: white;
+            border: 1px solid #e3e3e3;
+            border-radius: 5px;
+            padding: 5px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .boton-pedido:hover {
+            background-color: #1a6ed1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-scroller">
+
+        <!-- partial:partials/_navbar.html -->
+        <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+            <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
+                <a class="navbar-brand brand-logo me-5" href="index.php"><img
+                        src="{{ url_for('static', filename='img/logo-restaurante.png') }}" class="me-2"
+                        alt="logo" /></a>
+                <a class="navbar-brand brand-logo-mini" href="index.php"><img
+                        src="{{ url_for('static', filename='img/logo-restaurante.png') }}" alt="logo" /></a>
+            </div>
+            <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+                <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
+                    <i class="bi bi-list" style="font-size: 2rem;"></i>
+                </button>
+
+                <ul class="navbar-nav navbar-nav-right">
+
+
+                    <li class="nav-item nav-profile dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" id="profileDropdown">
+                            <img src="{{ url_for('static', filename='img/Admin-Profile.png') }}" alt="profile" />
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right navbar-dropdown"
+                            aria-labelledby="profileDropdown">
+
+                            <a class="dropdown-item" onclick="cerrarSession()">
+                                <i class="ti-power-off text-primary"></i>
+                                Cerrar sesion
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+                <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button"
+                    data-toggle="offcanvas">
+                    <i class="bi bi-list" style="font-size: 2rem;"></i>
+                </button>
+            </div>
+        </nav>
+        <!-- partial -->
+        <div class="container-fluid page-body-wrapper">
+            <!-- partial:partials/_sidebar.html -->
+            <nav class="sidebar sidebar-offcanvas" id="sidebar">
+                <ul class="nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.php">
+                            <i class="bi-speedometer2 menu-icon"></i>
+                            <span class="menu-title">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="categorias.php">
+                            <i class="bi bi-tags menu-icon"></i>
+                            <span class="menu-title">Categorias</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="#">
+                            <i class="fa-solid fa-burger menu-icon"></i>
+                            <span class="menu-title">Menu</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+            <!-- partial -->
+            <div class="main-panel">
+                <div class="content-wrapper">
+                    <div class="row">
+                        <div class="col-md-12 grid-margin stretch-card">
+                            <div class="card position-relative">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h4 class="card-title mb-0">Generar orden</h4>
+                                        </div>
+                                    </div>
+                                    <!-- buscar menu -->
+                                    <div class="row my-3 mx-auto">
+                                        <div class="col-md-3">
+                                            <!--Select categoria -->
+                                            <select class="form-select" aria-label="Default select example"
+                                                onchange="filtrarMenus()" id="categoria">
+                                                {% for categoria in categorias %}
+                                                <option value="{{ categoria.idcategoria }}">{{ categoria.nombre }}
+                                                </option>
+                                                {% endfor %}
+
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group mb-6">
+                                                <input type="text" id="txtbuscar" class="form-control"
+                                                    style="height: 38px" placeholder="Buscar menu"
+                                                    aria-label="Buscar menu" aria-describedby="basic-addon2"
+                                                    onkeyup="filtrarMenus()">
+                                                <span class="input-group-text" id="basic-addon2"><i
+                                                        class="bi bi-search"></i></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row"
+                                        style="border: 1px solid #e3e3e3; border-radius: 5px; padding: 10px;">
+                                        <!-- 2 columnas -->
+                                        <div class="col-md-12">
+                                            <div class="container">
+
+                                                <div id="contenedor-menu"
+                                                    class="row row-cols-1 row-cols-sm-2 row-cols-md-4"
+                                                    style="overflow-y: scroll; height: 702px;">
+                                                    {% for menu in menus %}
+                                                    <div class="col my-2">
+                                                        <div class="card shadow p-1 bg-body rounded">
+                                                            <img src="../../img/menus/{{ menu.imagen }}" alt="imagen"
+                                                                width="100%" height="150">
+                                                            <div class="card-body p-2">
+                                                                <p class="card-title my-1"
+                                                                    id="nombre-menu-{{ menu.idmenu }}">{{
+                                                                    menu.menu_nombre }}</p>
+                                                                <p class="card-text"><b>Precio: </b><span
+                                                                        id="precio-menu-{{ menu.idmenu }}">{{
+                                                                        '{:,.0f}'.format(menu.precio) }}</span> Gs</p>
+                                                                <p class="card-text lh-sm text-truncate">{{
+                                                                    menu.menu_descripcion }}</p>
+                                                                <a data-bs-toggle="tooltip"
+                                                                    data-bs-title="{{ menu.menu_descripcion }}"><i
+                                                                        class="bi bi-info-circle"></i></a>
+                                                                <div
+                                                                    class="d-flex justify-content-between align-items-center">
+                                                                    <div class="btn-group mx-auto">
+                                                                        <!-- Agrega aquí tus botones si los tienes -->
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+
+
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                </div>
+                <!-- content-wrapper ends -->
+                <!-- partial:partials/_footer.html -->
+
+                <!-- partial -->
+            </div>
+            <!-- main-panel ends -->
+        </div>
+        <!-- page-body-wrapper ends -->
+    </div>
+    <!-- container-scroller -->

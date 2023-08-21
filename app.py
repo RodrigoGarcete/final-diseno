@@ -719,6 +719,11 @@ def generate_pdf():
     response.headers['Content-Disposition'] = 'inline; filename=ticket.pdf'
     return response
 
+@app.route('/menu_cocinero')
+@role_required(3)  # Requiere rol 3 (cocinero)
+def menu_cocinero():
+    return render_template('cocinero/menu.html')
+
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
