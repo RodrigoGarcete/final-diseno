@@ -827,6 +827,11 @@ def generate_pdf():
     return Response(pdf_output, content_type='application/pdf',
                         headers={'Content-Disposition': 'inline; filename=factura.pdf'})
 
+@app.route('/menu_cocinero')
+@role_required(3)  # Requiere rol 3 (cocinero)
+def menu_cocinero():
+    return render_template('cocinero/menu.html')
+
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
