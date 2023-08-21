@@ -315,6 +315,29 @@ def ordenes():
 
     return render_template('admin/ordenes.html', categorias=categorias, factura_data=factura_data)
 
+@app.route('/ordenes_empleado')
+@role_required(2)  # Requiere rol 2 (empleado)
+def ordenes_empleado():
+    #abrir conexion
+    conexion.ping(reconnect=True)
+    try:
+        # Realiza la consulta para obtener las órdenes y sus detalles
+        with conexion.cursor() as cursor:
+            sql = "SELECT * FROM facturacion WHERE estado = 0 ORDER BY idfacturacion asc"
+            cursor.execute(sql)
+            ordenes = cursor.fetchall()
+            for orden in ordenes:
+                sql_detalle = "SELECT df.*, m.nombre FROM detalle_facturacion df INNER JOIN menu m ON m.idmenu = df.idmenu WHERE idfacturacion = %s"
+                cursor.execute(sql_detalle, (orden['idfacturacion'],))
+                orden['detalles'] = cursor.fetchall()
+    except pymysql.Error as e:
+        print(f"Error al consultar la base de datos: {e}")
+        ordenes = []
+    #cerrar conexion
+    conexion.close()
+    
+    return render_template('empleado/ordenes.html', ordenes=ordenes)
+
 @app.route('/usuarios', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def usuarios():
@@ -342,6 +365,7 @@ def menu_admin():
 @app.route('/empleado')
 @role_required(2)  # Requiere rol 2 (empleado)
 def empleado():
+    conexion.ping(reconnect=True)
     if 'usuario' in session and 'rol' in session:
         if session['rol'] == 2:  
             with conexion.cursor() as cursor:
@@ -500,7 +524,73 @@ def facturar():
 
     return json.dumps(response_data), 200
 
+@app.route('/reporte_diario_venta')
+@role_required(1)  # Requiere rol 1 (administrador)
+def reporte_diario_venta():
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    try:
+        # Realiza la consulta para obtener las ventas
+        with conexion.cursor() as cursor:
+            sql = "SELECT f.*, u.usuario FROM facturacion f INNER JOIN usuario u ON u.idusuario = f.idusuario WHERE fecha = CURDATE() ORDER BY hora DESC"
+            cursor.execute(sql)
+            ventas = cursor.fetchall()
+            
+            suma_total = sum(row['total'] for row in ventas)
+
+            for venta in ventas:
+                id_facturacion = str(venta['idfacturacion']).zfill(7)
+                fecha_estil = venta['fecha'].replace("-", "")
+                num = fecha_estil + id_facturacion
+                venta['num'] = num
+                venta['total'] = '{:,.0f}'.format(venta['total']).replace(',', '.')
+
+    except pymysql.Error as e:
+        print(f"Error al consultar la base de datos: {e}")
+        ventas = []
+        suma_total = 0
+    return render_template('admin/reporte_diario_venta.html', current_date=current_date, ventas=ventas, suma_total=suma_total)
+
+@app.route('/consulta_ventas', methods=['POST'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def consulta_ventas():
+    #obtener post fecha
+    fecha = request.form.get('fecha')
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM facturacion f inner join usuario u on u.idusuario = f.idusuario WHERE fecha = %s ORDER BY hora DESC"
+        cursor.execute(sql, (fecha,))   
+        ventas = cursor.fetchall()
     
+    if ventas:
+        suma_total = 0
+        i = 1
+        resp = ""
+        for venta in ventas:
+            resp += f"""<tr>
+                        <td class='py-2'>{i}</td>
+                        <td class='py-2'>{venta['hora']}</td>"""
+            id = str(venta['idfacturacion']).zfill(7)
+            fecha = str(venta['fecha']).replace("-", "")
+            num = str(fecha) + str(id)
+            resp += f"""<td class='py-2'>{num}</td>
+                        <td class='py-2'>{venta['orden']}</td>
+                        <td class='py-2'>{venta['usuario']}</td>"""
+            total = '{:,.0f}'.format(venta['total']).replace(',', '.')
+            resp += f"""<td class='py-2'>{total}</td>
+                        </tr>"""
+            suma_total = suma_total + venta['total']
+            i = i + 1
+        suma_total = '{:,.0f}'.format(suma_total).replace(',', '.')
+        resp += f"""<tr class="table-success">
+                    <td colspan="5" class="text-end"><b>Total</b></td>
+                    <td class="py-2">{suma_total}</td>
+                    </tr>"""
+    else:
+        resp = """<tr>
+                    <td colspan="6" class="text-center">No hay datos</td>
+                    </tr>"""
+    return resp
+
+
 
 @app.route('/pedido', methods=['GET'])
 @role_required(2)  # Requiere rol 2 (empleado)
