@@ -676,35 +676,7 @@ def pedido():
     apellido = session.get('apellido')
     return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario, nombre=nombre, apellido=apellido)
 
-@app.route('/cocinero')
-@role_required(3)  # Requiere rol 3 (cocinero)
-def cocinero():
-    if 'usuario' in session and 'rol' in session:
-        if session['rol'] == 3:  
-            with conexion.cursor() as cursor:
-                # Consulta total categorias
-                sql_total_categorias = "SELECT COUNT(*) AS total FROM categoria"
-                cursor.execute(sql_total_categorias)
-                row_total_categorias = cursor.fetchone()
 
-                # Consulta total menús
-                sql_total_menus = "SELECT COUNT(*) AS total FROM menu"
-                cursor.execute(sql_total_menus)
-                row_total_menus = cursor.fetchone()
-
-                # Consulta total órdenes en cola
-                sql_total_ordenes = "SELECT COUNT(*) AS total FROM facturacion WHERE estado = '0'"
-                cursor.execute(sql_total_ordenes)
-                row_total_ordenes = cursor.fetchone()
-
-            return render_template(
-                'cocinero/cocinero.html',
-                total_categorias=row_total_categorias['total'],
-                total_menus=row_total_menus['total'],
-                total_ordenes=row_total_ordenes['total']
-            )
-
-    return "Acceso no autorizado"
 
 @app.route('/datos_usuario', methods=['POST'])
 def datos_usuario():
@@ -892,11 +864,193 @@ def generate_pdf():
     # Devolver la respuesta al cliente
     return Response(pdf_output, content_type='application/pdf',
                         headers={'Content-Disposition': 'inline; filename=factura.pdf'})
+@app.route('/cocinero')
+@role_required(3)  # Requiere rol 3 (cocinero)
+def cocinero():
+    if 'usuario' in session and 'rol' in session:
+        if session['rol'] == 3:  
+            with conexion.cursor() as cursor:
+                # Consulta total categorias
+                sql_total_categorias = "SELECT COUNT(*) AS total FROM categoria"
+                cursor.execute(sql_total_categorias)
+                row_total_categorias = cursor.fetchone()
+
+                # Consulta total menús
+                sql_total_menus = "SELECT COUNT(*) AS total FROM menu"
+                cursor.execute(sql_total_menus)
+                row_total_menus = cursor.fetchone()
+
+                # Consulta total órdenes en cola
+                sql_total_ordenes = "SELECT COUNT(*) AS total FROM facturacion WHERE estado = '0'"
+                cursor.execute(sql_total_ordenes)
+                row_total_ordenes = cursor.fetchone()
+
+            return render_template(
+                'cocinero/cocinero.html',
+                total_categorias=row_total_categorias['total'],
+                total_menus=row_total_menus['total'],
+                total_ordenes=row_total_ordenes['total']
+            )
+
+    return "Acceso no autorizado"
 
 @app.route('/menu_cocinero')
 @role_required(3)  # Requiere rol 3 (cocinero)
 def menu_cocinero():
-    return render_template('cocinero/menu.html')
+    with conexion.cursor() as cursor:
+        sql= 'SELECT *,menu.descripcion as menu_descripcion,menu.nombre as menu_nombre FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria  WHERE menu.estado = 1 and categoria.estado = 1'
+        cursor.execute(sql)
+        menus = cursor.fetchall()
+
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM categoria WHERE estado = 1"
+        cursor.execute(sql)
+        categorias = cursor.fetchall()
+
+    return render_template(
+        'cocinero/menu.html',
+        menus=menus,
+        categorias=categorias)
+
+
+@app.route('/filtrar_menus_cocinero', methods=['POST'])
+@role_required(3)  # Requiere rol 3 (cocinero)
+def filtrar_menus_cocinero():
+    categoria = request.form.get('categoria')
+    buscar = request.form.get('buscar')
+    
+    if categoria != '0':
+        sql = f"""SELECT menu.idmenu, menu.descripcion, menu.imagen, menu.nombre as menu, menu.precio, categoria.nombre as categoria, menu.estado as estado_menu, categoria.estado as estado_categoria
+                  FROM menu INNER JOIN categoria ON menu.idcategoria = categoria.idcategoria WHERE menu.nombre LIKE '%{buscar}%' AND menu.estado = 1 AND categoria.estado = 1 and menu.idcategoria = {categoria}"""
+    else:
+        sql = f"""SELECT menu.idmenu, menu.descripcion, menu.imagen, menu.nombre as menu, menu.precio, categoria.nombre as categoria, menu.estado as estado_menu, categoria.estado as estado_categoria
+                  FROM menu INNER JOIN categoria ON menu.idcategoria = categoria.idcategoria WHERE menu.nombre LIKE '%{buscar}%' AND menu.estado = 1 AND categoria.estado = 1"""
+    
+    # Obtener los datos de la base de datos (simulación)
+    with conexion.cursor() as cursor:
+        cursor.execute(sql.format(buscar=buscar, categoria=categoria))
+        menus = cursor.fetchall()
+    
+    if menus:
+        html_result = ""
+        for row in menus:
+            imagen = row['imagen']
+            idmenu = row['idmenu']
+            nombre = row['menu']
+            descripcion = row['descripcion']
+            precio = row['precio']
+            html_result += f"""<div class="col my-2">
+                                <div class="card shadow p-1 bg-body rounded">
+                                <img src="static/img/menus/{imagen}" alt="imagen" width="100%" height="150">
+                                <div class="card-body p-2">
+                                <p class="card-title my-1" id="nombre-menu-{idmenu}">{nombre}</p>
+                                <p class="card-text"><b>Precio: </b><span id="precio-menu-{idmenu}">{precio}</span> Gs</p>
+                                <p class="card-text lh-sm text-truncate">'{descripcion}"{descripcion}</p>
+                                <a data-bs-toggle="tooltip" data-bs-title="{descripcion}"><i class="bi bi-info-circle"></i></a>
+                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="btn-group mx-auto">
+                                <button type="button" class="boton-pedido" onclick="agregarProducto({idmenu})">Agregar</button>
+                                </div></div></div></div></div>
+                            """
+    else:
+        html_result = """<div class="col my-2">
+                        <div class="card shadow p-1 bg-body rounded">
+                            <div class="card-body p-2">
+                                <p class="card-title my-1">No se encontraron resultados</p>
+                            </div>
+                        </div>
+                    </div>"""
+    return html_result
+
+@app.route('/ordenes_cocinero')
+@role_required(3)  # Requiere rol 3 (cocinero)
+def ordenes_cocinero():
+    sql = "SELECT * FROM categoria WHERE estado = 1 ORDER BY nombre ASC"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql)
+        categorias = cursor.fetchall()
+    
+    with conexion.cursor() as cursor:
+
+        sql = "SELECT * FROM facturacion WHERE estado = 0 ORDER BY idfacturacion ASC"
+        cursor.execute(sql)
+        facturacion = cursor.fetchall()
+
+        #guardar ultimo idfacturacion
+        if facturacion:
+            idfacturacion = facturacion[-1]['idfacturacion']
+
+        for mostrar in facturacion:
+            mostrar['detalle_facturacion'] = []
+
+            sql2 = f"SELECT * FROM detalle_facturacion df INNER JOIN menu m ON m.idmenu = df.idmenu WHERE idfacturacion = {mostrar['idfacturacion']}"
+            cursor.execute(sql2)
+            detalles = cursor.fetchall()
+            mostrar['detalle_facturacion'] = detalles
+    return render_template('cocinero/ordenes.html', categorias=categorias,facturacion=facturacion, idfacturacion=idfacturacion)
+
+@app.route('/terminar_orden', methods=['POST'])
+@role_required(3)  # Requiere rol 3 (cocinero)
+def terminar_orden():
+    idfacturacion = request.form.get('idfacturacion')
+    sql = "UPDATE facturacion SET estado = 1 WHERE idfacturacion = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (idfacturacion,))
+        conexion.commit()
+    
+    if cursor.rowcount > 0:
+        return "1"
+    else:
+        return "0"
+@app.route('/consultar_nueva_orden', methods=['POST'])
+@role_required(3)  # Requiere rol 3 (cocinero)
+def consultar_nueva_orden():
+    idfacturacion = request.form.get('idfacturacion')
+    print(idfacturacion)
+    sql = "SELECT * FROM facturacion WHERE estado = 0 and idfacturacion > %s ORDER BY idfacturacion asc"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (idfacturacion,))
+        facturacion = cursor.fetchall()
+    resp = ""
+    if facturacion:
+        for mostrar in facturacion:
+            resp += f"""<div class="col" style="max-height: 570px" id="orden-{mostrar['idfacturacion']}">
+                            <div class="col my-2" >
+                                <div class="card shadow p-1 bg-body rounded">
+                                    <div class="card-body p-2">
+                                        <p class="card-title my-1" style="font-size: 1.2rem;"><b>Orden #{mostrar['orden']}</b></p>
+                                        <p class="card-text my-1" style="font-size: 1.2rem;">{mostrar['fecha']} {mostrar['hora']}</p>
+                                        <div class="list-wrapper pt-2">
+                                            <ul class="d-flex flex-column-reverse todo-list todo-list-custom">
+                                                """
+            sql2 = f"SELECT * FROM detalle_facturacion df INNER JOIN menu m ON m.idmenu = df.idmenu WHERE idfacturacion = {mostrar['idfacturacion']}"
+            with conexion.cursor() as cursor:
+                cursor.execute(sql2)
+                detalles = cursor.fetchall()
+            for detalle in detalles:
+                resp += f"""<li>
+                                <div class="form-check form-check-flat">
+                                    <label class="form-check-label" >
+                                        <a data-bs-toggle="tooltip" data-bs-title="{detalle['descripcion']}"><i class="bi bi-info-circle"></i></a> - 
+                                        {detalle['nombre']} - <b>Cant: {detalle['cantidad']}</b>
+                                    
+                                    </label>
+                                </div>
+                            </li>
+                            """
+            resp += f"""</ul>
+                        </div>
+                        <div class="btn-group mx-auto" style="display: flex; justify-content: center; align-items: center;">
+                            <button type="button" class="boton-pedido" onclick="modal({mostrar['idfacturacion']})">Terminado</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>"""
+            idfacturacion = mostrar['idfacturacion']
+    else:
+        resp = "0"
+    return resp
 
 
 @app.route('/cerrar_session', methods=['POST'])

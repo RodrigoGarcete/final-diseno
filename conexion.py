@@ -3,7 +3,7 @@ import pymysql
 # Configura tus credenciales de base de datos aquí
 db_config = {
     'host': 'localhost',
-    #'port': 3307,
+    'port': 3307,
     'user': 'root',
     'password': 'root',
     'db': 'sistema_pw2',
