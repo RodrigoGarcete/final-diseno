@@ -943,7 +943,7 @@ def filtrar_menus_cocinero():
                                 <div class="card shadow p-1 bg-body rounded">
                                 <img src="static/img/menus/{imagen}" alt="imagen" width="100%" height="150">
                                 <div class="card-body p-2">
-                                <p class="card-title my-1" id="nombre-menu-{idmenu}">{nombre}</p>
+                                <p class="car d-title my-1" id="nombre-menu-{idmenu}">{nombre}</p>
                                 <p class="card-text"><b>Precio: </b><span id="precio-menu-{idmenu}">{precio}</span> Gs</p>
                                 <p class="card-text lh-sm text-truncate">'{descripcion}"{descripcion}</p>
                                 <a data-bs-toggle="tooltip" data-bs-title="{descripcion}"><i class="bi bi-info-circle"></i></a>

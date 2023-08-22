@@ -121,35 +121,42 @@
                         <div id="contenedor-ordenes" class="row row-cols-1 row-cols-sm-2 row-cols-md-3"
                             style="background-color: #aaaaae; min-height: 700px;border-radius: 10px; padding: 10px;">
                             {% for mostrar in facturacion %}
-    <div class="col" style="max-height: 570px" id="orden-{{ mostrar.idfacturacion }}">
-        <div class="col my-2">
-            <div class="card shadow p-1 bg-body rounded">
-                <div class="card-body p-2">
-                    <p class="card-title my-1 text-center" style="font-size: 1.2rem;"><b>Orden #{{ mostrar.orden }}</b></p>
-                    <p class="card-text my-1" style="font-size: 1rem;"><i>{{ mostrar.fecha }} {{ mostrar.hora }}</i></p>
-                    <div class="list-wrapper pt-2">
-                        <ul class="d-flex flex-column-reverse">
-                            {% for mostrar2 in mostrar.detalle_facturacion %}
-                            <li>
-                                <div class="form-check form-check-flat">
-                                    <label class="form-check-label">
-                                        <a data-bs-toggle="tooltip" data-bs-title="{{ mostrar2.descripcion }}"><i class="bi bi-info-circle"></i></a> - 
-                                        {{ mostrar2.nombre }} - <b>Cant: {{ mostrar2.cantidad }}</b>
-                                    </label>
+                            <div class="col" style="max-height: 570px" id="orden-{{ mostrar.idfacturacion }}">
+                                <div class="col my-2">
+                                    <div class="card shadow p-1 bg-body rounded">
+                                        <div class="card-body p-2">
+                                            <p class="card-title my-1 text-center" style="font-size: 1.2rem;"><b>Orden
+                                                    #{{ mostrar.orden }}</b></p>
+                                            <p class="card-text my-1" style="font-size: 1rem;"><i>{{ mostrar.fecha }} {{
+                                                    mostrar.hora }}</i></p>
+                                            <div class="list-wrapper pt-2">
+                                                <ul class="d-flex flex-column-reverse">
+                                                    {% for mostrar2 in mostrar.detalle_facturacion %}
+                                                    <li>
+                                                        <div class="form-check form-check-flat">
+                                                            <label class="form-check-label">
+                                                                <a data-bs-toggle="tooltip"
+                                                                    data-bs-title="{{ mostrar2.descripcion }}"><i
+                                                                        class="bi bi-info-circle"></i></a> -
+                                                                {{ mostrar2.nombre }} - <b>Cant: {{ mostrar2.cantidad
+                                                                    }}</b>
+                                                            </label>
+                                                        </div>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            <div class="btn-group mx-auto"
+                                                style="display: flex; justify-content: center; align-items: center;">
+                                                <button type="button" class="boton-pedido"
+                                                    onclick="modal({{ mostrar.idfacturacion }})">Terminado</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </li>
+                            </div>
                             {% endfor %}
-                        </ul>
-                    </div>
-                    <div class="btn-group mx-auto" style="display: flex; justify-content: center; align-items: center;">
-                        <button type="button" class="boton-pedido" onclick="modal({{ mostrar.idfacturacion }})">Terminado</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-    <input type="hidden" id="idfacturacion" value="{{ idfacturacion }}">
+                            <input type="hidden" id="idfacturacion" value="{{ idfacturacion }}">
                         </div>
 
                     </div>
