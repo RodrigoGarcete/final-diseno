@@ -11,6 +11,8 @@ from datetime import datetime
 import pytz
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
 import io
 #import httresponse
 
@@ -142,7 +144,71 @@ def guardar_categoria():
     except Exception as e:
         return '0'
 
+@app.route('/reporte_ventas', methods=['GET'])
+@role_required(1)  # Requiere rol 1 (administrador)
+def reporte_ventas():
+    #reconectar
+    conexion.ping(reconnect=True)
+    #recibir fecha desde post
+    fecha = request.args.get('fecha')
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM facturacion f inner join usuario u on u.idusuario = f.idusuario WHERE fecha = %s ORDER BY hora DESC"
+        query_with_params = cursor.mogrify(sql, (fecha,))
+        print("Consulta SQL con parámetros:", query_with_params)
+        cursor.execute(sql, (fecha,))
+        ventas = cursor.fetchall()
+    
+    
+    c = canvas.Canvas("reporte.pdf", pagesize=letter)
+    width, height = letter
+    # Título
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(width / 2 - 70, height - 50, "Informe de ventas del " + fecha)
 
+    # Crear la tabla
+    table_data = [["#", "Hora", "Nro de transaccion", "Cola", "Generado por", "Total"]]
+
+    for i, venta in enumerate(ventas, start=1):
+        idfacturacion = str(venta['idfacturacion']).zfill(7)
+        fecha_num = str(venta['fecha']).replace("-", "")
+        nro_transaccion = fecha_num + idfacturacion
+
+        row = [
+            str(i),
+            venta['hora'],
+            nro_transaccion,
+            venta['orden'],
+            venta['usuario'],
+            "{:,}".format(venta['total'])  # Formato con separador de miles
+        ]
+        table_data.append(row)
+
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+
+    # Tamaño de la tabla y posición para centrarla
+    table_width, table_height = table.wrapOn(c, width, height)
+    x = (width - table_width) / 2
+    y = height - 100 - table_height
+
+    # Dibujar la tabla en el PDF
+    table.drawOn(c, x, y)
+
+    # Cerrar el PDF
+    c.showPage()
+    c.save()
+    #vaciar variables
+    ventas = []
+    row = []
+    return Response(open("reporte.pdf", "rb"), mimetype="application/pdf")
 
 @app.route('/admin', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
