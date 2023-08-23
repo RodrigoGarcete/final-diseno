@@ -25,6 +25,8 @@ SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
 Session(app)
 
+
+
 # Decorador para verificar el rol del usuario
 def role_required(role):
     def decorator(view_func):
@@ -74,6 +76,71 @@ def login():
 
 
     return render_template('login.html', alerta="Usuario o contraseña incorrectos.")
+
+@app.route('/clientes')
+@role_required(1)  # Requiere rol 1 (administrador)
+def clientes():
+    with conexion.cursor() as cursor:
+        query = "SELECT cl.*,ci.nombre as ciudad FROM cliente cl INNER JOIN ciudad ci ON cl.idciudad = ci.idciudad"
+        cursor.execute(query)
+        clientes = cursor.fetchall()
+    
+    with conexion.cursor() as cursor:
+        query = "SELECT * FROM ciudad"
+        cursor.execute(query)
+        ciudades = cursor.fetchall()
+    
+    with conexion.cursor() as cursor:
+        query = "SELECT * FROM departamento"
+        cursor.execute(query)
+        departamentos = cursor.fetchall()
+    
+    return render_template('admin/clientes.html', clientes=clientes, ciudades=ciudades, departamentos=departamentos)
+
+@app.route('/datoscliente', methods=['GET','POST'])
+def datoscliente():
+    #reconectar
+    conexion.ping(reconnect=True)
+    id = request.form.get('id')
+    sql = "SELECT cl.*,ci.idciudad,d.iddepartamento FROM cliente cl INNER JOIN ciudad ci ON cl.idciudad = ci.idciudad INNER JOIN departamento d ON ci.iddepartamento = d.iddepartamento WHERE idcliente = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (id,))
+        cliente = cursor.fetchone()
+    
+    respuesta = {
+        'idcliente': cliente['idcliente'],
+        'nombre': cliente['nombre'],
+        'apellido': cliente['apellido'],
+        'ruc': cliente['ruc'],
+        'telefono': cliente['telefono'],
+        'idciudad': cliente['idciudad'],
+        'iddepartamento': cliente['iddepartamento']
+    }
+
+    return json.dumps(respuesta)
+
+@app.route('/guardarCliente', methods=['POST'])
+def guardarCliente():
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    ruc = request.form.get('ruc')
+    telefono = request.form.get('telefono')
+    ciudad = request.form.get('idciudad')
+
+    try:
+        with conexion.cursor() as cursor:
+            sql = "INSERT INTO cliente (nombre, apellido, ruc, telefono, idciudad) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(sql, (nombre, apellido, ruc, telefono, ciudad))
+            #imprimir consulta sql
+            conexion.commit()
+       
+        guardado_exitoso = 1
+
+        return str(guardado_exitoso)
+
+    except Exception as e:
+        print (e)
+        return '0'
 
 @app.route('/categoriasadmin', methods=['GET', 'POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
@@ -1052,6 +1119,37 @@ def consultar_nueva_orden():
         resp = "0"
     return resp
 
+@app.route('/modificarCliente', methods=['POST'])
+def modificarCliente():
+    idcliente = request.form.get('id')
+    nombre = request.form.get('nombre')
+    apellido = request.form.get('apellido')
+    ruc = request.form.get('ruc')
+    telefono = request.form.get('telefono')
+    idciudad = request.form.get('idciudad')
+    sql = "UPDATE cliente SET nombre = %s, apellido = %s, ruc = %s, telefono = %s, idciudad = %s WHERE idcliente = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (nombre, apellido, ruc, telefono, idciudad, idcliente))
+        conexion.commit()
+    if cursor.rowcount > 0:
+        return "1"
+    else:
+        return "0"
+
+@app.route('/cargarCiudades', methods=['POST'])
+def cargarCiudades():
+    iddepartamento = request.form.get('iddepartamento')
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM ciudad WHERE iddepartamento = %s"
+        cursor.execute(sql, (iddepartamento,))
+        ciudades = cursor.fetchall()
+    resp = ""
+    if ciudades:
+        for ciudad in ciudades:
+            resp += f"<option value='{ciudad['idciudad']}'>{ciudad['nombre']}</option>"
+    else:
+        resp = "<option value='0'>No hay ciudades</option>"
+    return resp
 
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
