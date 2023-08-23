@@ -274,7 +274,63 @@
               </div>
             </div>
           </div>
-
+          <div class="modal fade" id="form-nuevo" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="exampleModalLabel">Agregar nuevo cliente</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <form action="#" class="forms-sample">
+                    <div class="form-group">
+                      <label for="nombre">Nombre</label>
+                      <input type="text" class="form-control" id="nombre" placeholder="Nombre" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                      <label for="Descripcion">Apellido</label>
+                      <input class="form-control" id="apellido" rows="4"></input>
+                    </div>
+                    <div class="form-group row">
+                      <div class="col-md-6">
+                        <label for="ruc">Ruc/Ci</label>
+                        <input class="form-control" id="ruc"></input>
+                      </div>
+                      <div class="col-md-6">
+                        <label for="telefono">Telefono</label>
+                        <input class="form-control" id="telefono"></input>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <div class="col-md-6">
+                        <label for="departamento">Departamento</label>
+                        <select class="form-control" id="departamento" onchange="cargarCiudades(1)">
+                          <!-- Opciones de departamento -->
+                          {% for departamento in departamentos %}
+                            <option value="{{ departamento.iddepartamento }}">{{ departamento.nombre }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label for="ciudad">Ciudad</label>
+                        <select class="form-control" id="ciudad">
+                          <!-- Opciones de ciudad -->
+                          {% for ciudad in ciudades %}
+                            <option value="{{ ciudad.idciudad }}">{{ ciudad.nombre }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                  <button type="submit" id="btnGuardar" class="btn btn-success" onclick="guardarCliente()">Guardar</button>
+                </div>
+              </div>
+            </div>
+          </div>
           
           
         </div>
@@ -448,10 +504,17 @@
           data: {ruc: ruc},
           success: function(respuesta){
             var datos = JSON.parse(respuesta);
-            if(datos.idcliente == 0){
-              alert("Cliente no encontrado");
-              document.getElementById("cliente").value = "Sin Nombre";
-              document.getElementById("idcliente").value = "1";
+            if(datos.id == 0){
+              var confirmarRegistro = window.confirm("Cliente no encontrado. ¿Desea registrar al cliente?");
+                if (confirmarRegistro) {
+                    //cargar ruc en el input
+                    document.getElementById("ruc").value = document.getElementById("ruc-cliente").value;
+                    $('#form-nuevo').modal('show');
+                } else {
+                    document.getElementById("cliente").value = "Sin Nombre";
+                    document.getElementById("idcliente").value = "1";
+                }
+              
             }else{
               
               document.getElementById("cliente").value = datos.nombre+" "+datos.apellido;
@@ -569,7 +632,73 @@
         $('#modalPago').modal('show');
       }
 
-   
+      function cargarCiudades(tipo){
+        if (tipo == 1) {
+          var iddepartamento = document.getElementById('departamento').value;
+        }else{
+          var iddepartamento = document.getElementById('departamento-editar').value;
+        }
+        var parametros = {
+          "iddepartamento" : iddepartamento
+        };
+        $.ajax({
+          data: parametros,
+          url: 'cargarCiudades',
+          type: 'post',
+          success: function(response){
+            if (tipo == 1) {
+              document.getElementById('ciudad').innerHTML = response;
+            }else{
+              document.getElementById('ciudad-editar').innerHTML = response;
+            }
+          }
+        });
+      }
+      
+      function guardarCliente(){
+      if (document.getElementById('nombre').value == "" || document.getElementById('ruc').value == "") {
+        
+        alert("El campo Nombre y Ruc/Ci son obligatorios");
+        
+      }else{
+        var nombre = document.getElementById('nombre').value;
+        var apellido = document.getElementById('apellido').value;
+        var ruc = document.getElementById('ruc').value;
+        var telefono = document.getElementById('telefono').value;
+        var idciudad = document.getElementById('ciudad').value;
+        
+        var parametros = {
+          "nombre" : nombre,
+          "apellido" : apellido,
+          "ruc" : ruc,
+          "telefono" : telefono,
+          "idciudad" : idciudad
+          
+        };
+        $.ajax({
+          data: parametros,
+          url: 'guardarCliente',
+          type: 'post',
+          beforeSend: function(){
+            document.getElementById('btnGuardar').disabled = true;
+          },
+          success: function(response){
+            document.getElementById('btnGuardar').disabled = false;
+            if(response == 1){
+              $('#form-nuevo').modal('hide');
+              alert('Cliente guardada con exito');
+              document.getElementById('ruc-cliente').value = document.getElementById('ruc').value;
+              //click en buscar-cliente
+              document.getElementById('buscar-cliente').click();
+              
+            }else{
+              alert('Error al guardar el cliente');
+            }
+          }
+        }); 
+      }
+    }
+
        
       
   </script>

@@ -353,7 +353,7 @@
           success: function(response){
             document.getElementById('btnGuardar').disabled = false;
             if(response == 1){
-              alert('Categoria guardada con exito');
+              alert('Cliente guardada con exito');
               location.reload();
             }else{
               alert('Error al guardar el cliente');
@@ -462,6 +462,7 @@
           }
         });
       }
+  
   </script>
 
 <script src="{{ url_for('static', filename='vendors/base/vendor.bundle.base.js') }}"></script>

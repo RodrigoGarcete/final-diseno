@@ -737,11 +737,21 @@ def pedido():
         sql = "SELECT *,menu.descripcion as menu_descripcion,menu.nombre as menu_nombre FROM menu inner join categoria on menu.idcategoria = categoria.idcategoria WHERE menu.estado = 1 and categoria.estado = 1"
         cursor.execute(sql)
         menus = cursor.fetchall()
-
+    
+    with conexion.cursor() as cursor:
+        query = "SELECT * FROM ciudad"
+        cursor.execute(query)
+        ciudades = cursor.fetchall()
+    
+    with conexion.cursor() as cursor:
+        query = "SELECT * FROM departamento"
+        cursor.execute(query)
+        departamentos = cursor.fetchall()
+    
     idusuario = session.get('idusuario')
     nombre = session.get('nombre')
     apellido = session.get('apellido')
-    return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario, nombre=nombre, apellido=apellido)
+    return render_template('empleado/pedido.html', categorias=categorias, menus=menus, idusuario=idusuario, nombre=nombre, apellido=apellido, ciudades=ciudades, departamentos=departamentos)
 
 
 
