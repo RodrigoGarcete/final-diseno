@@ -29,6 +29,8 @@ Session(app)
 
 # Decorador para verificar el rol del usuario
 def role_required(role):
+    #recuperar conexion
+    conexion.ping(reconnect=True)
     def decorator(view_func):
         @wraps(view_func)
         def wrapped_view(*args, **kwargs):
@@ -41,6 +43,7 @@ def role_required(role):
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    alerta = 0
     if 'usuario' in session:
         # Si ya hay una sesión de usuario, redirigir según el rol
         rol = session['rol']
@@ -73,13 +76,16 @@ def login():
                     return redirect(url_for('empleado'))
                 elif row['rol'] == 3:
                     return redirect(url_for('cocinero'))
+                
+            else:
+                alerta = 1
 
-
-    return render_template('login.html', alerta="Usuario o contraseña incorrectos.")
+    return render_template('login.html', alerta=alerta)
 
 @app.route('/clientes')
 @role_required(1)  # Requiere rol 1 (administrador)
 def clientes():
+    conexion.ping(reconnect=True)
     with conexion.cursor() as cursor:
         query = "SELECT cl.*,ci.nombre as ciudad FROM cliente cl INNER JOIN ciudad ci ON cl.idciudad = ci.idciudad"
         cursor.execute(query)
@@ -121,6 +127,7 @@ def datoscliente():
 
 @app.route('/guardarCliente', methods=['POST'])
 def guardarCliente():
+    conexion.ping(reconnect=True)
     nombre = request.form.get('nombre')
     apellido = request.form.get('apellido')
     ruc = request.form.get('ruc')
@@ -145,6 +152,7 @@ def guardarCliente():
 @app.route('/categoriasadmin', methods=['GET', 'POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def categoriasadmin():
+    conexion.ping(reconnect=True)
     if 'usuario' in session and 'rol' in session:
         if session['rol'] == 1:
             with conexion.cursor() as cursor:
@@ -157,7 +165,7 @@ def categoriasadmin():
 @app.route('/datoscategoria', methods=['GET','POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def datoscategoria():
-    
+    conexion.ping(reconnect=True)
     id = request.form.get('id')
     sql = "SELECT * FROM categoria WHERE idcategoria = %s"
     #print("Consulta SQL:", sql % id)
@@ -177,6 +185,7 @@ def datoscategoria():
 
 @app.route('/modificarCategoria', methods=['POST'])  # Definimos la ruta y los métodos permitidos
 def modificar_categoria():
+    conexion.ping(reconnect=True)
     id = request.form.get('id')
     nombre = request.form.get('nombre')
     descripcion = request.form.get('descripcion')
@@ -194,6 +203,7 @@ def modificar_categoria():
 
 @app.route('/guardarCategoria', methods=['POST'])  # Definimos la ruta y los métodos permitidos
 def guardar_categoria():
+    conexion.ping(reconnect=True)
     nombre = request.form.get('nombre')
     descripcion = request.form.get('descripcion')
     estado = request.form.get('estado')
@@ -280,6 +290,7 @@ def reporte_ventas():
 @app.route('/admin', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def admin():
+    conexion.ping(reconnect=True)
     if 'usuario' in session and 'rol' in session:
         if session['rol'] == 1:
             with conexion.cursor() as cursor:
@@ -349,6 +360,7 @@ def admin():
 @app.route('/datos_menu', methods=['POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def datos_menu():
+    conexion.ping(reconnect=True)
     sql = "SELECT * FROM menu WHERE idmenu = %s"
     id = request.form.get('idmenu')
     with conexion.cursor() as cursor:
@@ -370,6 +382,7 @@ def datos_menu():
 @app.route('/modificar_menu', methods=['POST'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def modificar_menu():
+    conexion.ping(reconnect=True)
     id = request.form.get('id')
     nombre = request.form.get('nombre')
     descripcion = request.form.get('descripcion')
@@ -400,6 +413,7 @@ def modificar_menu():
 @app.route('/guardarMenu', methods=['POST'])
 @role_required(1)
 def guardarMenu():
+    conexion.ping(reconnect=True)
     nombre = request.form.get('nombre')
     descripcion = request.form.get('descripcion')
     precio = request.form.get('precio')
@@ -435,6 +449,7 @@ def guardarMenu():
 @app.route('/ordenes', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def ordenes():
+    conexion.ping(reconnect=True)
     sql = "SELECT * FROM categoria WHERE estado = 1 ORDER BY nombre ASC"
     with conexion.cursor() as cursor:
         cursor.execute(sql)
@@ -474,6 +489,7 @@ def ordenes_empleado():
 @app.route('/usuarios', methods=['GET'])
 @role_required(1)  # Requiere rol 1 (administrador)
 def usuarios():
+    conexion.ping(reconnect=True)
     with conexion.cursor() as cursor:
         query = "SELECT * FROM usuario"
         cursor.execute(query)
@@ -484,6 +500,7 @@ def usuarios():
 @app.route('/menu')
 @role_required(1)  # Requiere rol 1 (administrador)
 def menu_admin():
+    conexion.ping(reconnect=True)
     sql = "SELECT * FROM categoria"
     with conexion.cursor() as cursor:
         cursor.execute(sql)
@@ -529,6 +546,7 @@ def empleado():
 @app.route('/filtrar_menus', methods=['POST'])
 @role_required(2)  # Requiere rol 2 (empleado)
 def filtrar_menus():
+    conexion.ping(reconnect=True)
     categoria = request.form.get('categoria')
     buscar = request.form.get('buscar')
     #si categoria es distinto a 0
@@ -578,6 +596,7 @@ def filtrar_menus():
 @app.route('/buscar_cliente', methods=['POST'])
 @role_required(2)  # Requiere rol 2 (empleado)
 def buscar_cliente():
+    conexion.ping(reconnect=True)
     ruc = request.form.get('ruc')
     sql = "SELECT * FROM cliente WHERE ruc = %s"
     with conexion.cursor() as cursor:
@@ -601,7 +620,7 @@ def buscar_cliente():
 @app.route('/facturar', methods=['POST'])
 @role_required(2)  # Requiere rol 2 (empleado)
 def facturar():
-    
+    conexion.ping(reconnect=True)
     data = request.json
     idcliente = data.get("idcliente")
     total = data.get("total")
@@ -672,7 +691,7 @@ def reporte_diario_venta():
 
             for venta in ventas:
                 id_facturacion = str(venta['idfacturacion']).zfill(7)
-                fecha_estil = venta['fecha'].replace("-", "")
+                fecha_estil = str(venta['fecha']).replace("-", "")
                 num = fecha_estil + id_facturacion
                 venta['num'] = num
                 venta['total'] = '{:,.0f}'.format(venta['total']).replace(',', '.')
@@ -728,6 +747,7 @@ def consulta_ventas():
 @app.route('/pedido', methods=['GET'])
 @role_required(2)  # Requiere rol 2 (empleado)
 def pedido():
+    conexion.ping(reconnect=True)
     sql = "SELECT * FROM categoria WHERE estado = 1"
     with conexion.cursor() as cursor:
         cursor.execute(sql)
@@ -944,6 +964,7 @@ def generate_pdf():
 @app.route('/cocinero')
 @role_required(3)  # Requiere rol 3 (cocinero)
 def cocinero():
+    conexion.ping(reconnect=True)
     if 'usuario' in session and 'rol' in session:
         if session['rol'] == 3:  
             with conexion.cursor() as cursor:
@@ -1161,11 +1182,132 @@ def cargarCiudades():
         resp = "<option value='0'>No hay ciudades</option>"
     return resp
 
+@app.route('/reservas')
+@role_required(2)  # Requiere rol 2 (empleado)
+def reservas():
+    conexion.ping(reconnect=True)
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    sql = "SELECT * FROM reserva WHERE fecha = %s ORDER BY hora DESC"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (current_date,))
+        reservas = cursor.fetchall()
+    return render_template('empleado/reservas.html', reservas=reservas , current_date=current_date)
+
 @app.route('/cerrar_session', methods=['POST'])
 def cerrar_session():
     # Destruir la sesión
     session.clear()
     return jsonify(1)
+
+@app.route('/guardar_reserva', methods=['POST'])
+def guardar_reserva():
+    ci = request.form.get('cliente')
+    fecha = request.form.get('fecha')
+    hora = request.form.get('hora')
+    nota = request.form.get('nota')
+    mesa = request.form.get('mesa')
+    personas = request.form.get('personas')
+    print(fecha)
+
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM cliente WHERE ruc = %s"
+        cursor.execute(sql, (ci,))
+        cliente = cursor.fetchone()
+    
+    with conexion.cursor() as cursor:
+        sql = "SELECT * FROM reserva WHERE fecha = %s and HOUR(hora) = HOUR(%s) and num_mesa = %s"
+        cursor.execute(sql, (fecha, hora, mesa))
+        reserva = cursor.fetchone()
+    
+    if reserva:
+        return "2"
+
+    if cliente:
+        idcliente = cliente['idcliente']
+        with conexion.cursor() as cursor:
+            sql = "INSERT INTO reserva (idcliente, fecha, hora, nota, num_mesa, num_personas,estado,cedula) VALUES (%s, %s, %s, %s, %s, %s, %s,%s)"
+            cursor.execute(sql, (idcliente, fecha, hora, nota, mesa, personas, 1,ci))
+            conexion.commit()
+    
+        if cursor.rowcount > 0:
+            return "1"
+        else:
+            return "0"
+    else:
+        with conexion.cursor() as cursor:
+            idcliente = 1
+            sql = "INSERT INTO reserva (idcliente, fecha, hora, nota, num_mesa, num_personas,estado,cedula) VALUES (%s, %s, %s, %s, %s, %s, %s,%s)"
+            cursor.execute(sql, (idcliente, fecha, hora, nota, mesa, personas, 1,ci))
+            conexion.commit()
+        if cursor.rowcount > 0:
+            return "1"
+        else:
+            return "0"
+
+@app.route('/consulta_reservas', methods=['POST'])
+def consulta_reservas():
+    fecha = request.form.get('fecha')
+    sql = "SELECT * FROM reserva WHERE fecha = %s ORDER BY hora DESC"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (fecha,))
+        reservas = cursor.fetchall()
+    resp = ""
+    if reservas:
+        # Recorrer las reservas
+        i = 1
+        for reserva in reservas:
+            resp += f"""<tr>
+                        <td class="py-2">{i}</td>
+                        <td class="py-2">{reserva['fecha']}</td>
+                        <td class="py-2">{reserva['hora']}</td>
+                        <td class="py-2">{reserva['num_mesa']}</td>
+                        <td class="py-2">{reserva['num_personas']}</td>
+                        <td class="py-2">
+                                <a data-bs-toggle="tooltip" data-bs-title="{reserva['nota']}"><i class="bi bi-info-circle"></i></a>
+                              </td>
+                        <td class="py-2">{reserva['cedula']}</td>"""
+            if reserva['estado'] == 1:
+                resp += f"""<td class="py-2"><span class="badge bg-warning">Reservado</span></td>
+                                <td class="py-2 text-center">
+                                <button type="button" class="btn btn-success btn-sm" style="padding: 0.2rem 0.5rem;
+                                font-size: 12px;" onclick="marcarConcluido({reserva['idreserva']})">
+                                  <i class="fa fa-check"></i>
+                                </button>
+                              </td>"""
+            else:
+                resp += f"""<td class="py-2"><span class="badge bg-success">Concluido</span></td>
+                            <td class="py-2 text-center">
+                                <button type="button" class="btn btn-success btn-sm" style="padding: 0.2rem 0.5rem;
+                                font-size: 12px;" disabled onclick="marcarConcluido({reserva['idreserva']})">
+                                  <i class="fa fa-check"></i>
+                                </button></td>"""
+                            
+            resp += "</tr>"
+            i = i + 1
+    else:
+        resp = """<tr>
+                              <td colspan="9" class="text-center">
+                                No hay datos
+                              </td>
+                            </tr>
+                    """
+    return resp
+
+@app.route('/confirmar_reserva', methods=['POST'])
+def confirmar_reserva():
+    #reconexion
+    conexion.ping(reconnect=True)
+    idreserva = request.form.get('id')
+    print(idreserva)
+    sql = "UPDATE reserva SET estado = 0 WHERE idreserva = %s"
+    with conexion.cursor() as cursor:
+        cursor.execute(sql, (idreserva,))
+        conexion.commit()
+    
+    if cursor.rowcount > 0:
+        return "1"
+    else:
+        return "0"
 
 if __name__ == '__main__':
     app.run(debug=True)

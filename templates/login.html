@@ -26,8 +26,8 @@
 
                                     <h5 class="fw-normal mb-3 pb-3" style="letter-spacing: 1px;">Iniciar sesión en su cuenta</h5>
                                     <div class="alert alert-danger alert-dismissible fade show" role="alert"
-                                         id="alerta" style="display: {% if alerta %}block{% else %}none{% endif %};">
-                                        <strong id="alerta">{{ alerta }}</strong>
+                                         id="alerta" style="display: {% if alerta == 1%}block{% else %}none{% endif %}">
+                                        <strong id="alerta">Usuario o contraseña incorrectos.</strong>
                                     </div>
 
                                     <div class="form-outline mb-4">
